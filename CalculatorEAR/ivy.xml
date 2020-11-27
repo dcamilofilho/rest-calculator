@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE xml>
+<ivy-module version="2.0">
+	<info organisation="com.illimitati" module="CalculatorEAR" />
+
+	<configurations>
+		<conf name="build" description="File grouping that has no transitive dependencies"  visibility="public"/>
+		<conf name="compile" description="File grouping that need just to compile"  visibility="public"/>
+	</configurations>
+  
+	<dependencies>
+				
+		<!-- https://mvnrepository.com/artifact/org.apache.httpcomponents/httpclient -->
+		<dependency org="org.apache.httpcomponents" name="httpclient" rev="4.5.12" conf="build->compile,master"/>
+		
+		<!-- https://mvnrepository.com/artifact/org.codehaus.jettison/jettison -->
+        <dependency org="org.codehaus.jettison" name="jettison" rev="1.1" conf="build->compile,master"/>
+        
+        <!-- https://mvnrepository.com/artifact/javax.ws.rs/jsr311-api -->
+		<dependency org="javax.ws.rs" name="jsr311-api" rev="1.1.1" conf="build->compile,master"/>
+        
+        <!-- https://mvnrepository.com/artifact/com.sun.jersey/jersey-servlet -->
+        <dependency org="com.sun.jersey" name="jersey-servlet" rev="1.19" conf="build->compile,master"/>
+        
+        <!-- https://mvnrepository.com/artifact/com.sun.jersey/jersey-json -->
+		<dependency org="com.sun.jersey" name="jersey-json" rev="1.19" conf="build->compile,master"/>
+        
+	</dependencies>
+	
+</ivy-module>

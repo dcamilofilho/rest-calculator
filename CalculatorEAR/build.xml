@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE xml>
+<project name="Calculator-Application" default="ear" xmlns:ivy="antlib:org.apache.ivy.ant">
+
+	<property environment="env" description="deixa disponível as variáveis de ambiente para uso no ant" />
+	<property name="build.dir" value="${user.home}/Desktop" description="caminho no qual o EAR será criado" />
+	<property name="version" value="1.0.0" description="Versão do EAR e que aparecerá nas implantações do WL" />
+
+	<property name="war.src" value="../CalculatorRestService" description="caminho no qual o projeto do WAR esta" />
+	<property name="war.name" value="CalculatorRestService.war" description="nome do WAR a ser gerado" />
+	<!--	<property name="war.lib" value="${war.src}/WebContent/WEB-INF/lib" description="caminho no qual as libs estão" />	-->
+	
+	<property name="ejb.src" value="../CalculatorEJB" description="caminho no qual o projeto do EJB esta" />
+	<property name="ejb.name" value="CalculatorEJB.jar" description="nome do EJB a ser gerado" />
+	<!--	<property name="ejb.lib" value="${ejb.src}/lib" description="caminho no qual as libs estão" />	-->
+
+	
+	<property name="lib" value="EarContent/APP-INF/lib" description="caminho no qual as libs estão" />
+	<property name="ivy.shared.default.root" value="D:/CMSD Tecnologia LTDA/Illimitati - Documentos/IAM/ivy/repository/shared" />
+	<property name="ivy.retrieve.pattern" value="${lib}/[artifact]-[revision].[ext]" />
+
+
+	<!-- NOW -->
+	<tstamp id="date">
+		<format property="TODAY_BR" pattern="d-MMM-yyyy HH:mm:ss" locale="pt,BR" />
+	</tstamp>
+
+	<exec executable="git" outputproperty="git.last_log" description="Executa o camando log do git para pegar o commit mais recente (hash, comentario e autor)">
+		<!-- comando log do git para pegar o historico de commits-->
+		<arg value="log" />
+		<!-- formata no padrao [hash] comentario (autor) -->
+		<arg value="--format=[%h] %s (%an)" />
+		<!-- pega apenas o ultimo -->
+		<arg value="-1" />
+		<!-- pega o que esta no servidor (ao inves de pegar o ultimo commit da maquina) >
+				<arg value="origin/master" /-->
+	</exec>
+
+	<path id="compile.classpath" description="classpath para compilar o código com as libs do projeto e as libs do servidor de aplicação">
+		<!--
+			<fileset dir="EarContent/APP-INF/lib" description="path que contem os JARs utilizados dentro do projeto e que acompanharão o código">
+				<include name="*.jar" />
+			</fileset>
+		-->
+		<fileset dir="${lib}" description="path que contem os JARs utilizados dentro do projeto e que acompanharão o código">
+			<include name="*.jar" />
+		</fileset>
+		<fileset dir="${env.WL_HOME}/server/lib" description="path que contem os JARs para compilar o projeto e que já estão no servidor de aplicação">
+			<include name="*.jar" />
+		</fileset>
+		<!--	
+			<fileset dir="${war.lib}" description="path que contem os JARs utilizados dentro do projeto e que acompanharão o código">
+				<include name="*.jar" />
+			</fileset>
+			<fileset dir="${ejb.lib}" description="path que contem os JARs utilizados dentro do projeto e que acompanharão o código">
+				<include name="*.jar" />
+			</fileset>	
+		-->
+	</path>
+
+	<target name="clean" description="Remove todos os arquivos compilados">
+		<delete dir="${ejb.src}/build" />
+		<delete dir="${war.src}/build" />
+	</target>
+
+	<target name="init" depends="clean" description="Cria as pastas para realizar o build do projeto">
+		<mkdir dir="${ejb.src}/build/classes" />
+		<mkdir dir="${war.src}/build/classes" />
+	</target>
+
+	<target name="ejb" depends="init" description="compila o projeto (java para bitecode)">
+		<!-- download libs configuradas como 'compile' e adiciona ao path (sem adicionar a pasta do projeto) -->
+		<ivy:cachepath conf="compile" pathid="build.path" />
+		<!-- FIXME change to ejbjar -->
+		<javac target="1.8" source="1.8" debug="true" debuglevel="lines,vars,source" destdir="${ejb.src}/build/classes" srcdir="${ejb.src}/ejbModule">
+			<classpath refid="compile.classpath" />
+			<classpath refid="build.path" />
+		</javac>
+		<copy todir="${ejb.src}/build/classes" description="copia o codigo fonte para dentro do compilado para 'Export Source Files'">
+			<fileset dir="${ejb.src}/ejbModule" />
+		</copy>
+
+		<jar destfile="${ejb.src}/build/${ejb.name}" basedir="${ejb.src}/build/classes" includes="**/*" />
+	</target>
+
+	<target name="war" depends="ejb" description="Cria o WAR">
+		<!-- download libs configuradas como 'compile' e adiciona ao path (sem adicionar a pasta do projeto) -->
+		<ivy:cachepath conf="compile" pathid="build.path" />
+		<!-- copile war -->
+		<javac target="1.8" source="1.8" debug="true" debuglevel="lines,vars,source" destdir="${war.src}/build/classes" srcdir="${war.src}/src">
+			<classpath refid="compile.classpath" />
+			<classpath refid="build.path" />
+			<classpath location="${ejb.src}/build/${ejb.name}" />
+		</javac>
+		<copy todir="${war.src}/build/classes" description="copia o codigo fonte para dentro do compilado para 'Export Source Files'">
+			<fileset dir="${war.src}/src" />
+		</copy>
+		<!-- build war -->
+		<war destfile="${war.src}/build/${war.name}" webxml="${war.src}/WebContent/WEB-INF/web.xml" description="cria o war com os arquivos compilados">
+			<fileset dir="${war.src}/WebContent" description="copia todo o conteído de WebContent para dentro do WAR" />
+			<classes dir="${war.src}/build/classes" description="copia todo o conteudo de build/classes (arquivos compilados) para dentro do WAR" />
+		</war>
+	</target>
+
+	<target name="ear" depends="resolve,war" description="Cria o EAR">
+
+		<ear destfile="${build.dir}/CalculatorEAR" appxml="EarContent/META-INF/application.xml">
+			<metainf dir="EarContent/META-INF" />
+			<zipfileset dir="EarContent/APP-INF/lib" includes="*.jar" prefix="APP-INF/lib" description="copia as libs para dentro do ear" />
+			<manifest>
+				<attribute name="Build-By" value="${user.name}" />
+				<attribute name="Build-Date" value="${TODAY_BR}" />
+				<attribute name="Weblogic-Application-Version" value="${version}" />
+				<attribute name="Last-Modification" value="${git.last_log}" />
+			</manifest>
+			<fileset file="${war.src}/build/${war.name}" description="copia o war para dentro do ear" />
+			<fileset file="${ejb.src}/build/${ejb.name}" description="copia o ejb para dentro do ear" />
+
+		</ear>
+
+	</target>
+
+	<target name="resolve" description="retrieve dependencies with Ivy">
+		<!-- download libs configuradas como 'build' para a pasta descrita no pattern -->
+		<ivy:retrieve conf="build"/>
+		<!-- download libs configuradas como 'compile' e adiciona ao path (sem adicionar a pasta do projeto) -->
+		<ivy:cachepath conf="compile" pathid="build.path" />
+	</target>
+
+</project>
